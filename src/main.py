@@ -1,34 +1,31 @@
-from fastapi import FastAPI
-import asyncio
+"""
+Py-Blockchain-Indexer: Indexes and queries blockchain block data
+"""
 import time
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
-app = FastAPI(title="Py-Blockchain-Indexer API", version="2.0.0")
+app = FastAPI(title="Py-Blockchain-Indexer", version="3.0.0")
 
-class Processor:
-    def __init__(self):
-        self.ready = False
-        self.items_processed = 0
-        
-    async def initialize(self):
-        await asyncio.sleep(0.1)
-        self.ready = True
-        
-    def process(self, data: dict) -> dict:
-        if not self.ready:
-            raise RuntimeError("Not initialized")
-        self.items_processed += 1
-        return {"status": "success", "processed": True, "domain": "indexer", "data": data}
+blocks = []
+class Block(BaseModel):
+    hash: str
+    height: int
+    tx_count: int
 
-processor = Processor()
+@app.post("/api/v1/blocks")
+def index_block(b: Block):
+    blocks.append(b.dict())
+    blocks.sort(key=lambda x: x["height"])
+    return {"status": "indexed", "height": b.height}
 
-@app.on_event("startup")
-async def startup():
-    await processor.initialize()
+@app.get("/api/v1/blocks/latest")
+def get_latest():
+    if not blocks:
+        raise HTTPException(status_code=404, detail="No blocks")
+    return blocks[-1]
+
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "ready": processor.ready, "processed": processor.items_processed}
-
-@app.post("/api/v1/process")
-def process_data(payload: dict):
-    return processor.process(payload)
+    return {"status": "healthy", "service": "Py-Blockchain-Indexer", "timestamp": int(time.time())}
