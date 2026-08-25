@@ -58,6 +58,20 @@ def test_rejects_invalid_fields_and_missing_blocks():
     assert client.post(
         "/v1/blocks", json={"block_hash": HASH_A, "height": -1, "tx_count": 0}
     ).status_code == 422
+    for invalid_height in [True, 1.0, "1"]:
+        assert client.post(
+            "/v1/blocks",
+            json={"block_hash": HASH_A, "height": invalid_height, "tx_count": 0},
+        ).status_code == 422
+    for invalid_tx_count in [False, 1.0, "1"]:
+        assert client.post(
+            "/v1/blocks",
+            json={"block_hash": HASH_A, "height": 1, "tx_count": invalid_tx_count},
+        ).status_code == 422
+    assert client.post(
+        "/v1/blocks",
+        json={"block_hash": HASH_A, "height": 1, "tx_count": 0, "timestamp": True},
+    ).status_code == 422
     assert client.get("/v1/blocks/latest").status_code == 404
     assert client.get("/v1/blocks/99").status_code == 404
 
