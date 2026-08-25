@@ -1,6 +1,11 @@
 import pytest
 
-from src.monitor import ChainObservation, MonitorError, assess_observation, explorer_contract
+from src.monitor import (
+    ChainObservation,
+    MonitorError,
+    assess_observation,
+    explorer_contract,
+)
 
 HASH_A = "0x" + "a" * 64
 HASH_B = "0x" + "b" * 64
