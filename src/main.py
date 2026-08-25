@@ -3,7 +3,7 @@ import threading
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Response
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, StrictInt, field_validator
 
 app = FastAPI(title="Sky Chain Catalog", version="0.1.0")
 
@@ -15,9 +15,9 @@ BLOCK_HASH = re.compile(r"^0x[0-9a-fA-F]{64}$")
 
 class BlockRecord(BaseModel):
     block_hash: str
-    height: int = Field(ge=0, le=MAX_HEIGHT)
-    tx_count: int = Field(ge=0, le=MAX_TX_COUNT)
-    timestamp: int | None = Field(default=None, ge=0, le=MAX_HEIGHT)
+    height: StrictInt = Field(ge=0, le=MAX_HEIGHT)
+    tx_count: StrictInt = Field(ge=0, le=MAX_TX_COUNT)
+    timestamp: StrictInt | None = Field(default=None, ge=0, le=MAX_HEIGHT)
 
     @field_validator("block_hash")
     @classmethod
