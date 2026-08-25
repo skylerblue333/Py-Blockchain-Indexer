@@ -1,44 +1,71 @@
-<!-- PORTFOLIO PROJECT PROFILE: maintained by the repository owner -->
+# Sky Chain Catalog — Python Engineering Beta
 
-## Project profile and code-audit snapshot
+Sky Chain Catalog is a small FastAPI service for registering and querying validated blockchain block summaries supplied by a trusted upstream component. It is deliberately network-independent and does not pretend to verify a chain by itself.
 
-**What this is:** **Py-Blockchain-Indexer** is a public repository described as: “Script to fetch and index blockchain data. #SkyCoin4444 #AI #Blockchain #DevOps #Innovation” Its dominant language signals are **Python (4 files)**.
+## Status
 
-**Why it has value:** Its value is best understood through the implementation evidence currently present in the repository: **18 tracked files** were observed in the shallow audit, with the source structure and existing documentation providing the project’s specific context. This README does not treat a prototype, experiment, or archive as a production system without supporting evidence.
+**Engineering beta.** The service validates canonical 32-byte hexadecimal block hashes, bounded heights and transaction counts, enforces a 10,000-block in-memory capacity, makes duplicate indexing idempotent, rejects height/hash conflicts, and exposes health/readiness plus latest/by-height queries.
 
-**Implementation evidence:** 2 test-related file(s) detected; 2 dependency or package manifest(s) detected; 2 build/CI/infrastructure signal(s) detected; and 3 documentation or governance file(s) detected. Test filenames observed include `tests/__init__.py`, `tests/test_main.py`. Dependency or package files include `package.json`, `requirements.txt`. Build, CI, or infrastructure signals include `Dockerfile`, `.github/workflows/ci.yml`.
+It does **not** connect to an RPC node, verify consensus or finality, automatically process reorganizations, persist history, index transactions/logs, provide explorer analytics, authenticate tenants, provide HA, or establish production deployment readiness.
 
-**Current status:** The repository is tracked on the `main` branch. The existing source tree, configuration, tests, workflows, and documentation remain authoritative for supported behavior and maturity. A code audit is not a production-readiness certification, and the presence of a test or workflow file does not establish that all checks pass.
+## API
 
-**Relationship to the wider portfolio:** This repository is one focused component of the broader Skyler Blue Spillers portfolio across AI, software engineering, cloud and DevOps, cybersecurity, blockchain, finance, education, social systems, and creative work. It may provide a service boundary, implementation pattern, experiment, archive, or reusable idea for related repositories. Treat repositories as technical dependencies only where documented interfaces and verified project requirements support that relationship.
+- `GET /healthz` — process liveness.
+- `GET /readyz` — reports catalog capacity and indexed count.
+- `POST /v1/blocks` — register a block summary.
+- `GET /v1/blocks/latest` — highest indexed height.
+- `GET /v1/blocks/{height}` — lookup by height.
 
-**Quality and security note:** No obvious secret-like pattern was detected by the limited static scan; this is not a substitute for a security audit. No TODO/FIXME marker was detected in the scanned text files.
+Example block:
 
----
+```json
+{
+  "block_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "height": 100,
+  "tx_count": 5,
+  "timestamp": 1724450000
+}
+```
 
-# Py Blockchain Indexer
+Submitting the exact same block twice is idempotent. Submitting a different block at an existing height returns HTTP 409 instead of silently rewriting history. Reorganization handling must be implemented explicitly by a future trusted ingestion layer.
 
-![GitHub stars](https://img.shields.io/github/stars/skylerblue333/Py-Blockchain-Indexer?style=flat-square)
-![GitHub license](https://img.shields.io/github/license/skylerblue333/Py-Blockchain-Indexer?style=flat-square)
+## Run locally
 
-## 🌟 Overview
-**Py-Blockchain-Indexer** is a professional-grade project within the **SkyCoin4444** ecosystem. It focuses on delivering high-value solutions in the domain of **Python**.
+```bash
+python -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+uvicorn src.main:app --host 127.0.0.1 --port 8000
+```
 
-## 🚀 Key Features
-- **Scalable Architecture**: Designed for enterprise-level growth and performance.
-- **Modern Standards**: Implements best practices for clean code and maintainability.
-- **Robust Integration**: Built to work seamlessly within modern cloud-native environments.
+## Verify
 
-## 🛠️ Technology Stack
-- **Primary Domain**: Python
-- **Ecosystem**: SkyCoin4444 Digital Platform
+```bash
+pip install pip-audit
+python -m compileall -q src tests
+ruff check src tests
+pytest -q
+pip-audit -r requirements.txt
+docker build -t sky-chain-catalog .
+docker run --rm --entrypoint=id sky-chain-catalog -u
+```
 
-## 📂 Structure
-The project is organized into a modular structure to ensure clarity and ease of development.
+The container is expected to run as UID `10001`. CI also starts the image and verifies `/healthz`.
 
-## 👨‍💻 Author
-**Skyler Blue Spillers**
-*Professional Chess Player & Software Engineer*
+## Architecture
 
----
-*Powered by SkyCoin4444*
+`src/main.py` is the canonical service. Block summaries are stored in bounded process-local maps keyed by height and hash and protected by a lock so duplicate/conflict/capacity checks are atomic. State disappears when the process exits.
+
+A real chain ingestion adapter should live behind a separately reviewed RPC/network boundary. That adapter is responsible for node authentication, transport security, chain identity, finality policy, reorganization handling, retry/backfill behavior, and independent validation before submitting summaries here.
+
+## SKYCOIN4444 integration
+
+SKYCOIN4444 can use this component as a stable normalized block-summary boundary for explorer, analytics, or monitoring prototypes. The catalog should consume already-validated upstream observations rather than embedding node credentials or network access into this reusable repository.
+
+## Security and operational boundaries
+
+This service does not verify that submitted blocks are authentic. It has no authentication, authorization, durable audit history, tenant isolation, rate limiting, persistent database, or consensus validation. Do not expose it as an authoritative chain index without a trusted ingestion and access-control layer.
+
+## License
+
+See `LICENSE`.
