@@ -1,8 +1,8 @@
 """Caller-supplied chain observation monitoring for SkyChainMonitor (#149)."""
 
+import re
 from dataclasses import dataclass
 from typing import Literal
-import re
 
 ObservationStatus = Literal["pending", "confirmed", "reorg_candidate"]
 _HASH = re.compile(r"^0x[0-9a-f]{64}$")
